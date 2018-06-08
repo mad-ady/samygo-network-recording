@@ -1,0 +1,84 @@
+#!/mnt/bin/busybox sh
+#
+# © Copyright 1996-2013, SamyGO
+#
+#
+. /dtv/SGO.env
+
+stop_bootloop()
+{
+# emergency skript exit to prevent boot loop
+      for USB in ${1:- \
+         /dtv/usb/sd* } ; do
+         echo "checking $USB"
+         sleep 1
+         if [ -e $USB/STOP_TELNET ]; then
+            "STOP_TELNET found. Script exit..."
+            exit 1
+         fi
+      done
+}
+
+#TO-DO: You need to fill in the share where you want to store recordings:
+#       Needs to end with a / (e.g. /dtv/usb/sdc/nfs/192.168.1.5/TVRecordings/CONTENTS/)
+NETWORKSHARE=/dtv/usb/sdc/nfs/192.168.1.5/TVRecordings/CONTENTS/
+RECORDINGFOLDER=`find /dtv/usb/ -name CONTENTS -maxdepth 2 | head -1`
+LOG=/dtv/networkrecording.log
+case $1 in 
+	start)
+	stop_bootloop # in testing phase. Just for protection.
+	echo "" > $LOG
+	#see if the networkshare exists
+	if [ -d "$NETWORKSHARE" ]; then
+		echo "[OK] NETWORKSHARE $NETWORKSHARE is accessible" | tee -a $LOG
+		#see if recordingfolder is a symlink to networkshare
+		if [ -L "$RECORDINGFOLDER" ]; then
+			echo "[OK] RECORDINGFOLDER $RECORDINGFOLDER is a link" | tee -a $LOG
+			target=`readlink "$RECORDINGFOLDER"`
+			if [ "$target" = "$NETWORKSHARE" ]; then
+				echo "[OK] Link is pointing to $NETWORKSHARE. No further changes needed" | tee -a $LOG
+				exit 0;
+			else
+				echo "[FIX] Link is pointing to $target, which is different than $NETWORKSHARE. Generating correct link" | tee -a $LOG
+				mv "$RECORDINGFOLDER" "$RECORDINGFOLDER".old
+				ln -s "$RECORDINGFOLDER" "$NETWORKSHARE"
+				echo "[OK] Created link $RECORDINGFOLDER -> $NETWORKSHARE" | tee -a $LOG
+			fi
+		else
+			echo "[MIGRATE] Migrating RECORDINGFOLDER $RECORDINGFOLDER to $NETWORKSHARE" | tee -a $LOG 
+			echo "[MIGRATE] Copying contents of $RECORDINGFOLDER to $NETWORKSHARE. This may take a while..." | tee -a $LOG
+			cp -ar "$RECORDINGFOLDER/*" "$NETWORKSHARE"
+			echo "[MIGRATE] Creating link..." | tee -a $LOG
+			mv "$RECORDINGFOLDER" "$RECORDINGFOLDER".old
+			ln -s "$RECORDINGFOLDER" "$NETWORKSHARE"
+			echo "[OK] Created link $RECORDINGFOLDER -> $NETWORKSHARE" | tee -a $LOG
+		fi
+	else
+		echo "[Error] NETWORKSHARE $NETWORKSHARE is not a directory." | tee -a $LOG
+		exit;
+	fi
+	;;
+	stop)
+        echo "There is no revert option (yet)"
+	;;
+	status)
+		if [ -L "$RECORDINGFOLDER" ]; then
+			target=`readlink "$RECORDINGFOLDER"`
+			if [ "$target" = "$NETWORKSHARE" ]; then
+				if [ -d "$NETWORKSHARE" ]; then
+					echo "Network recording is set up correctly."
+				else
+					echo "Network recording is set up correctly, but the share is not currently acessible"
+				fi
+			else
+				echo "Network recording is not set up correctly (it's pointing to the wrong share)"
+			fi
+		else
+			echo "Network recording is not set up"
+		fi
+	;;
+	*)
+	echo "Usage: $0 {start|stop|status}" 1>&2
+	exit 0
+	;;
+esac
