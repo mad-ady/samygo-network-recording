@@ -41,16 +41,16 @@ case $1 in
 			else
 				echo "[FIX] Link is pointing to $target, which is different than $NETWORKSHARE. Generating correct link" | tee -a $LOG
 				mv "$RECORDINGFOLDER" "$RECORDINGFOLDER".old
-				ln -s "$RECORDINGFOLDER" "$NETWORKSHARE"
+				ln -s "$NETWORKSHARE" "$RECORDINGFOLDER" 
 				echo "[OK] Created link $RECORDINGFOLDER -> $NETWORKSHARE" | tee -a $LOG
 			fi
 		else
 			echo "[MIGRATE] Migrating RECORDINGFOLDER $RECORDINGFOLDER to $NETWORKSHARE" | tee -a $LOG 
 			echo "[MIGRATE] Copying contents of $RECORDINGFOLDER to $NETWORKSHARE. This may take a while..." | tee -a $LOG
-			cp -ar "$RECORDINGFOLDER/*" "$NETWORKSHARE"
+			cp -ar $RECORDINGFOLDER/* "$NETWORKSHARE"
 			echo "[MIGRATE] Creating link..." | tee -a $LOG
 			mv "$RECORDINGFOLDER" "$RECORDINGFOLDER".old
-			ln -s "$RECORDINGFOLDER" "$NETWORKSHARE"
+			ln -s "$NETWORKSHARE" "$RECORDINGFOLDER" 
 			echo "[OK] Created link $RECORDINGFOLDER -> $NETWORKSHARE" | tee -a $LOG
 		fi
 	else
